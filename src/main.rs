@@ -10,6 +10,7 @@ enum Filter {
     Rust,
     Cpp,
     Nix,
+    Zig,
     C,
 }
 
@@ -27,6 +28,7 @@ const EXTENSIONS_BASE: &[&str] = &["txt", "md"];
 const EXTENSIONS_RUST: &[&str] = &["rs", "toml"];
 const EXTENSIONS_CPP: &[&str] = &["cpp", "hpp", "cxx"];
 const EXTENSIONS_NIX: &[&str] = &["nix"];
+const EXTENSIONS_ZIG: &[&str] = &["zig", "zon"];
 const EXTENSIONS_C: &[&str] = &["c", "h"];
 
 fn read_files_recursive(
@@ -73,6 +75,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 extensions.extend(EXTENSIONS_RUST);
                 extensions.extend(EXTENSIONS_CPP);
                 extensions.extend(EXTENSIONS_NIX);
+                extensions.extend(EXTENSIONS_ZIG);
                 extensions.extend(EXTENSIONS_C);
             }
             Filter::Rust => {
@@ -82,6 +85,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Filter::Nix => {
                 extensions.extend(EXTENSIONS_BASE);
                 extensions.extend(EXTENSIONS_NIX);
+            }
+            Filter::Zig=> {
+                extensions.extend(EXTENSIONS_BASE);
+                extensions.extend(EXTENSIONS_ZIG);
             }
             Filter::Cpp => {
                 extensions.extend(EXTENSIONS_BASE);

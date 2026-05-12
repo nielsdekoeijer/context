@@ -1,4 +1,4 @@
-{ makeRustPlatform, rust, ... }:
+{ pkgs, makeRustPlatform, rust, ... }:
 
 let
   cargoToml = fromTOML (builtins.readFile ./Cargo.toml);
@@ -10,7 +10,7 @@ in
 rustPlatform.buildRustPackage {
   pname = cargoToml.package.name;
   version = cargoToml.package.version;
-  src = ./.;
+  src = pkgs.lib.cleanSource ./.;
   cargoLock = {
     lockFile = ./Cargo.lock;
   };

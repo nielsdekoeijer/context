@@ -4,7 +4,10 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
     utils.url = "github:numtide/flake-utils";
-    rust-overlay.url = "github:oxalica/rust-overlay";
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -14,7 +17,7 @@
       utils,
       rust-overlay,
     }:
-    utils.lib.eachSystem [ "x86_64-linux" ] (
+    utils.lib.eachDefaultSystem (
       system:
       let
         # overlays

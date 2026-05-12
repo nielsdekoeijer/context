@@ -1,4 +1,5 @@
 use clap::{Parser, ValueEnum};
+use globset::{Glob, GlobSet, GlobSetBuilder};
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -16,6 +17,10 @@ enum Filter {
 #[command(version, about)]
 struct Args {
     filters: Option<Vec<Filter>>,
+
+    /// Wildcard patterns to exclude (e.g., "test*", "target", "*.txt")
+    #[arg(short, long)]
+    exclude: Option<Vec<String>>,
 }
 
 const EXTENSIONS_BASE: &[&str] = &["txt", "md"];
@@ -27,6 +32,7 @@ const EXTENSIONS_C: &[&str] = &["c", "h"];
 fn read_files_recursive(
     path: &Path,
     extensions: &[&str],
+    excludes: &GlobSet,
     filtered_files: &mut Vec<PathBuf>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if path.is_dir() {
@@ -34,8 +40,13 @@ fn read_files_recursive(
             let entry = entry_result?;
             let path = entry.path();
 
+            let file_name = path.file_name().unwrap_or_default().to_string_lossy();
+            if excludes.is_match(file_name.as_ref()) {
+                continue;
+            }
+
             if path.is_dir() {
-                read_files_recursive(&path, &extensions, &mut *filtered_files)?;
+                read_files_recursive(&path, &extensions, &excludes, &mut *filtered_files)?;
             } else if path.is_file() {
                 if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
                     if extensions.contains(&ext) {
@@ -53,6 +64,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let filters = args.filters.unwrap_or(vec![Filter::All]);
     let mut extensions = Vec::<&str>::new();
+    let exclude_patterns = args.exclude.unwrap_or_default();
 
     for filter in filters {
         match filter {
@@ -86,7 +98,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pwd = Path::new(".");
     let mut filtered_files = Vec::<PathBuf>::new();
 
-    read_files_recursive(&pwd, &extensions, &mut filtered_files)?;
+    let mut builder = GlobSetBuilder::new();
+    for pattern in exclude_patterns {
+        builder.add(Glob::new(&pattern)?);
+    }
+    let excludes = builder.build()?;
+
+    read_files_recursive(&pwd, &extensions, &excludes, &mut filtered_files)?;
 
     let editor = std::env::var("EDITOR")?;
 

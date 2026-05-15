@@ -29,6 +29,7 @@ const EXTENSIONS_RUST: &[&str] = &["rs", "toml"];
 const EXTENSIONS_CPP: &[&str] = &["cpp", "hpp", "cxx"];
 const EXTENSIONS_NIX: &[&str] = &["nix"];
 const EXTENSIONS_ZIG: &[&str] = &["zig", "zon"];
+const EXCLUSIONS_ZIG: &[&str] = &["zig-out", ".zig-cache"];
 const EXTENSIONS_C: &[&str] = &["c", "h"];
 
 fn read_files_recursive(
@@ -66,7 +67,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let filters = args.filters.unwrap_or(vec![Filter::All]);
     let mut extensions = Vec::<&str>::new();
-    let exclude_patterns = args.exclude.unwrap_or_default();
+    let mut exclude_patterns = args.exclude.unwrap_or_default();
 
     for filter in filters {
         match filter {
@@ -77,6 +78,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 extensions.extend(EXTENSIONS_NIX);
                 extensions.extend(EXTENSIONS_ZIG);
                 extensions.extend(EXTENSIONS_C);
+                exclude_patterns.extend(EXCLUSIONS_ZIG.iter().map(|s| s.to_string()));
             }
             Filter::Rust => {
                 extensions.extend(EXTENSIONS_BASE);
@@ -89,6 +91,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Filter::Zig=> {
                 extensions.extend(EXTENSIONS_BASE);
                 extensions.extend(EXTENSIONS_ZIG);
+                exclude_patterns.extend(EXCLUSIONS_ZIG.iter().map(|s| s.to_string()));
             }
             Filter::Cpp => {
                 extensions.extend(EXTENSIONS_BASE);

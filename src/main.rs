@@ -17,11 +17,16 @@ enum Filter {
 #[derive(Parser, Debug)]
 #[command(version, about)]
 struct Args {
+    /// Predefined category
     filters: Option<Vec<Filter>>,
 
     /// Wildcard patterns to exclude (e.g., "test*", "target", "*.txt")
     #[arg(short, long)]
     exclude: Option<Vec<String>>,
+
+    /// Wildcard patterns to include (e.g., "test*", "target", "*.txt")
+    #[arg(short, long)]
+    include: Option<Vec<String>>,
 }
 
 const EXTENSIONS_BASE: &[&str] = &["txt", "md"];
@@ -36,6 +41,7 @@ fn read_files_recursive(
     path: &Path,
     extensions: &[&str],
     excludes: &GlobSet,
+    includes: &GlobSet,
     filtered_files: &mut Vec<PathBuf>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if path.is_dir() {
@@ -49,11 +55,17 @@ fn read_files_recursive(
             }
 
             if path.is_dir() {
-                read_files_recursive(&path, &extensions, &excludes, &mut *filtered_files)?;
+                read_files_recursive(&path, &extensions, &excludes, &includes, &mut *filtered_files)?;
             } else if path.is_file() {
+                if includes.is_match(file_name.as_ref()) {
+                    filtered_files.push(path);
+                    continue
+                }
+
                 if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
                     if extensions.contains(&ext) {
                         filtered_files.push(path);
+                        continue
                     }
                 }
             }
@@ -68,6 +80,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let filters = args.filters.unwrap_or(vec![Filter::All]);
     let mut extensions = Vec::<&str>::new();
     let mut exclude_patterns = args.exclude.unwrap_or_default();
+    let mut include_patterns = args.include.unwrap_or_default();
 
     for filter in filters {
         match filter {
@@ -108,13 +121,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pwd = Path::new(".");
     let mut filtered_files = Vec::<PathBuf>::new();
 
-    let mut builder = GlobSetBuilder::new();
+    let mut exclude_builder = GlobSetBuilder::new();
     for pattern in exclude_patterns {
-        builder.add(Glob::new(&pattern)?);
+        exclude_builder.add(Glob::new(&pattern)?);
     }
-    let excludes = builder.build()?;
+    let excludes = exclude_builder.build()?;
 
-    read_files_recursive(&pwd, &extensions, &excludes, &mut filtered_files)?;
+    let mut include_builder = GlobSetBuilder::new();
+    for pattern in include_patterns {
+        include_builder.add(Glob::new(&pattern)?);
+    }
+    let includes = include_builder.build()?;
+
+    read_files_recursive(&pwd, &extensions, &excludes, &includes, &mut filtered_files)?;
 
     let editor = std::env::var("EDITOR")?;
 
